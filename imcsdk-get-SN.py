@@ -9,7 +9,7 @@ import imcsdk
 from imcsdk.imchandle import ImcHandle
 
 
-class DumpSN:
+class GetSN:
     """A class to dump a SN"""
 
     def __init__(self, args):
@@ -60,28 +60,53 @@ class DumpSN:
         self.log.debug("Leaving imc_connect.")
 
 
-    def dump_SN(self):
-        self.log.debug("Entering dump_classid.")
+    def get_SN(self):
+        self.log.debug("Entering get_SN.")
 
+        # C220
         try:
+            self.log.debug("Querying computeRackUnits...")
             object_array = self.imchandle.query_classid('computeRackUnit')
             self.log.debug("object_array=%s", object_array)
             i=0
             for object in object_array:
                 self.log.debug("object_array[%s]=%s", i, object)
-                self.log.warning("Serial Number %s: %s", i, object.serial)
+                self.log.warning("Rack Server SN %s: %s", i, object.serial)
                 i = i + 1
         except Exception as e:
             self.log.info("Exception: %s", e)
-            self.imc_disconnect()
 
-        self.log.debug("Leaving dump_MIT.")
+        # S3260
+        try:
+            # chassis
+            self.log.info("Querying equipmentChassis...")
+            object_array = self.imchandle.query_classid('equipmentChassis')
+            self.log.debug("object_array=%s", object_array)
+            i=0
+            for object in object_array:
+                self.log.debug("object_array[%s]=%s", i, object)
+                self.log.warning("Chassis SN %s: %s", i, object.serial)
+                i = i + 1
+
+            # server nodes
+            self.log.info("Querying computeServerNodes...")
+            object_array = self.imchandle.query_classid('computeServerNode')
+            self.log.debug("object_array=%s", object_array)
+            i=0
+            for object in object_array:
+                self.log.debug("object_array[%s]=%s", i, object)
+                self.log.warning("Server Node SN %s: %s", i, object.serial)
+                i = i + 1
+        except Exception as e:
+            self.log.info("Exception: %s", e)
+
+        self.log.debug("Leaving get_SN.")
         
 if __name__ == "__main__":
 
-    instance = DumpSN(sys.argv)
+    instance = GetSN(sys.argv)
 
     instance.imc_connect()
-    instance.dump_SN()
+    instance.get_SN()
     instance.imc_disconnect()
     # ...
