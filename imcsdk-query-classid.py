@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 #
-# dump all MO's of a class_id
+# dump all MO's of a class_id(s)
 
 import sys
 import argparse
@@ -8,10 +8,11 @@ import logging
 import inspect
 import imcsdk
 from imcsdk.imchandle import ImcHandle
+from imcsdk.imcexception import ImcException
 
 
 class DumpClassID:
-    """A class to dump all MO's with a given class_id"""
+    """A class to dump all MO's with a given class_id(s)"""
 
     def __init__(self, args):
         """Initialize instance: Logging"""
@@ -32,7 +33,8 @@ class DumpClassID:
         argparser.add_argument('-c', '--connect', required=True, action='store', help="Host to connect to")
         argparser.add_argument('-C', '--class_id', required=True, action='store', help="Class ID to dump")
         argparser.add_argument('-u', '--username', required=True, action='store', help="Host username")
-        argparser.add_argument('-p', '--password', required=True, action='store', help="Host password")
+        argparser.add_argument('-p', '--password', required=True, action='append', help=
+                               """Host password. Specify more than 1 to try multiple.""")
 
         self.args = argparser.parse_args()
 
@@ -49,12 +51,20 @@ class DumpClassID:
     def imc_connect(self):
         """Connect to the server's IMC"""
         self.log.debug("Entering %s", inspect.stack()[0][3])
-        self.log.debug("Entering imc_connect.")
-        self.imchandle = ImcHandle(self.args.connect,
-                                   self.args.username,
-                                   self.args.password)
-        self.imchandle.login()
-        self.log.info("Connected to %s.", self.args.connect)
+        for password in self.args.password:
+            try:
+                self.imchandle = ImcHandle(self.args.connect,
+                                           self.args.username,
+                                           password)
+                self.imchandle.login()
+                self.log.info("Connected to %s.", self.args.connect)
+                self.log.debug("Leaving %s", inspect.stack()[0][3])
+                return True
+            except ImcException as e:
+                if int(e.error_code) == 551:
+                    self.log.warning("Password %s rejected.", password)
+                else:
+                    self.log.warning("ImcException raised: %s", e)
         self.log.debug("Leaving %s", inspect.stack()[0][3])
 
     def imc_disconnect(self):
@@ -87,7 +97,7 @@ if __name__ == "__main__":
 
     instance = DumpClassID(sys.argv)
 
-    instance.imc_connect()
-    instance.dump_classid()
-    instance.imc_disconnect()
+    if instance.imc_connect():
+        instance.dump_classid()
+        instance.imc_disconnect()
     # ...
